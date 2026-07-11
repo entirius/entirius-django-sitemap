@@ -1,0 +1,11 @@
+User-agent:*
+Allow: /
+Disallow: /user/
+Disallow: /checkout/
+Disallow: /app/
+Disallow: /bin/
+Disallow: /dev/
+Disallow: /lib/
+Disallow: /*?*
+Disallow: /*?order_by*
+
