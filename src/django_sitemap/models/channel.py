@@ -5,6 +5,14 @@
 from django.db import models
 
 
+class FileSplitMode(models.IntegerChoices):
+    """How generated sitemap files are split across languages. Currency splitting is independent
+    (driven by DomainSitemap.currencies)."""
+
+    WHOLE_CHANNEL = 0, "One file for the whole channel (languages merged)"
+    PER_LANGUAGE = 1, "Separate file per language"
+
+
 class LanguageSitemap(models.Model):
     idx = models.CharField(max_length=255, unique=True, null=True, blank=True)
     is_active = models.BooleanField(default=True)
@@ -45,13 +53,18 @@ class LanguageSitemap(models.Model):
         default=list,
         help_text="Access rights contentdb. Example: [1,2]",
     )
-    merge_languages_in_sitemap = models.BooleanField(
-        default=True,
-        help_text="Jeśli zaznaczone, pliki sitemap dla różnych języków będą łączone w jeden plik dla danego kanału.",
+    file_split_mode = models.PositiveSmallIntegerField(
+        choices=FileSplitMode.choices,
+        default=FileSplitMode.WHOLE_CHANNEL,
+        help_text=(
+            "How sitemap files are split by language: one file per channel (languages merged) "
+            "or a separate file per language. Currency filtering and splitting is independent — "
+            "driven by the 'currencies' field on DomainSitemap (currencies set there = filter + separate files)."
+        ),
     )
     skip_category_without_enabled_products = models.BooleanField(
         default=True,
-        help_text="Jeśli zaznaczone, kategorie bez włączonych produktów nie będą generowane w sitemap.",
+        help_text="If set, categories without enabled products are not generated in the sitemap.",
     )
     exclude_product_types = models.JSONField(
         blank=True,

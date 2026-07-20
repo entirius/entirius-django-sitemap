@@ -39,12 +39,13 @@ class FaqSitemapGenerator(BaseSitemapGenerator):
             return None
         return settings.FaqChannel.objects.filter(idx=self.channel_idx).first()
 
-    def _get_faq_base_url(self, language_iso2: str) -> str:
-        """URL prefix for one language. Depends only on language, not on item."""
+    def _get_faq_base_url(self, language_iso2: str, currency: str | None = None) -> str:
+        """URL prefix for one (language, currency). Depends only on language/currency, not on item."""
         domain_with_scheme = self._get_base_url()
         path = self._replace_channel_placeholders(self.sitemap_channel.faq_url).strip("/")
         base = f"{domain_with_scheme}/{path}/"
-        return self._get_formatted_lang_url(base, language_iso2)
+        base = self._get_formatted_lang_url(base, language_iso2)
+        return self._get_formatted_currency_url(base, currency)
 
     @staticmethod
     def _resolve_url_key(item, language_iso2: str) -> str:
@@ -80,23 +81,26 @@ class FaqSitemapGenerator(BaseSitemapGenerator):
         self.save_xml(urlset, f"{filepath}-{language_iso2.lower()}")
         self.logger.info(f"Saved FAQ sitemap file: {filepath}-{language_iso2}")
 
-    def _process_batch(self, batch: list, base_url: str, language_iso2: str, file_counter: int):
-        if self.sitemap_channel.merge_languages_in_sitemap:
-            merged_key = f"{settings.FAQ_PACKAGE}-{file_counter}"
+    def _process_batch(
+        self, batch: list, base_url: str, language_iso2: str, file_counter: int, currency: str | None = None
+    ):
+        suffix = self._currency_file_suffix(currency)
+        if self._merge_languages():
+            merged_key = f"{settings.FAQ_PACKAGE}-{file_counter}{suffix}"
             if merged_key not in self.merged_urlsets:
                 self.merged_urlsets[merged_key] = self.create_base_urlset()
             for item in batch:
                 self._add_item_to_urlset(self.merged_urlsets[merged_key], item, base_url, language_iso2)
         else:
-            self._dump_to_file(batch, f"{settings.FAQ_PACKAGE}-{file_counter}", base_url, language_iso2)
+            self._dump_to_file(batch, f"{settings.FAQ_PACKAGE}-{file_counter}{suffix}", base_url, language_iso2)
 
-    def _process_language(self, language_iso2: str):
+    def _process_language(self, language_iso2: str, currency: str | None = None):
         items = FaqPage.get_active_items(channel=self._faq_channel)
         if not items:
             self.logger.info(f"No active FAQ items for channel {self.channel_idx}. Skipping {language_iso2}.")
             return
 
-        base_url = self._get_faq_base_url(language_iso2)
+        base_url = self._get_faq_base_url(language_iso2, currency)
         file_counter = 1
         current_batch = []
 
@@ -109,12 +113,12 @@ class FaqSitemapGenerator(BaseSitemapGenerator):
         ):
             current_batch.append(item)
             if len(current_batch) >= settings.LIMIT:
-                self._process_batch(current_batch, base_url, language_iso2, file_counter)
+                self._process_batch(current_batch, base_url, language_iso2, file_counter, currency)
                 current_batch = []
                 file_counter += 1
 
         if current_batch:
-            self._process_batch(current_batch, base_url, language_iso2, file_counter)
+            self._process_batch(current_batch, base_url, language_iso2, file_counter, currency)
 
     def generate(self, **kwargs):
         if settings.FAQ_PACKAGE is None:
@@ -133,7 +137,8 @@ class FaqSitemapGenerator(BaseSitemapGenerator):
         try:
             for language_iso2 in self._get_shop_languages():
                 self._add_log_params(language=language_iso2)
-                self._process_language(language_iso2)
+                for currency in self._iter_currencies():
+                    self._process_language(language_iso2, currency)
                 self.logger.delete_log_param("language")
 
             self.logger.info("FAQ sitemap generation complete")

@@ -26,7 +26,7 @@ SITEMAP_PATH = os.path.join(SITEMAP_ROOT_DIR, "sitemap/")
 TEMPORARY_PATH = os.path.join(SITEMAP_ROOT_DIR, "sitemap-processing/")
 
 SITEMAP_TEMPLATE = os.path.join(TEMPLATE_DIRS, "sitemap.xml")
-ROBOTS_TEMPLATE_PATH = os.path.join(TEMPLATE_DIRS, "robots.txt")
+ROBOTS_TEMPLATE_PATH = getattr(settings, "SITEMAP_ROBOTS_TEMPLATE_PATH", os.path.join(TEMPLATE_DIRS, "robots.txt"))
 
 LIST_OF_CATEGORY_IDXES_WHICH_ARE_EXCLUDED = getattr(settings, "LIST_OF_CATEGORY_IDXES_WHICH_ARE_EXCLUDED", [])
 
