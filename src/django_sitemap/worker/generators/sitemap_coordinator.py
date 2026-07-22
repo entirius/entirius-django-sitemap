@@ -14,6 +14,7 @@ from django_sitemap.models import DomainSitemap
 from django_sitemap.worker.generators.category import CategorySitemapGenerator
 from django_sitemap.worker.generators.contentdb import ContentDBSitemapGenerator
 from django_sitemap.worker.generators.faq import FaqSitemapGenerator
+from django_sitemap.worker.generators.index import IndexSitemapGenerator
 from django_sitemap.worker.generators.product import ProductSitemapGenerator
 from django_sitemap.worker.generators.robots import RobotsTxtGenerator
 
@@ -31,6 +32,7 @@ class SitemapCoordinator:
             "category": CategorySitemapGenerator(domain_sitemap),
             "contentdb": ContentDBSitemapGenerator(domain_sitemap),
             "faq": FaqSitemapGenerator(domain_sitemap),
+            "index": IndexSitemapGenerator(domain_sitemap),
             "robots": RobotsTxtGenerator(domain_sitemap),
         }
         self.channel_temp_dir = os.path.join(settings.TEMPORARY_PATH, domain_sitemap.idx)
@@ -80,4 +82,5 @@ class SitemapCoordinator:
         self.generators["category"].generate()
         self.generators["contentdb"].generate()
         self.generators["faq"].generate()
+        self.generators["index"].generate()
         self.move_to_final_directory()

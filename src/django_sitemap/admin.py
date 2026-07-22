@@ -21,7 +21,7 @@ class LanguageSitemapAdminForm(forms.ModelForm):
         choices=PRODUCT_TYPE_CHOICES,
         widget=forms.CheckboxSelectMultiple,
         required=False,
-        help_text="Wybierz typy produktów do wykluczenia z sitemapy.",
+        help_text="Select product types to exclude from the sitemap.",
     )
 
     class Meta:
@@ -48,24 +48,34 @@ class LanguageSitemapAdmin(admin.ModelAdmin):
         "product_url",
         "custom_product_url",
         "category_url",
-        "merge_languages_in_sitemap",
+        "file_split_mode",
     ]
     search_fields = ["idx", "channel_short_idx"]
-    list_filter = ["is_active", "merge_languages_in_sitemap"]
+    list_filter = ["is_active", "file_split_mode"]
     list_editable = [
         "is_active",
         "product_url",
         "custom_product_url",
         "category_url",
-        "merge_languages_in_sitemap",
+        "file_split_mode",
     ]
 
 
 class DomainSitemapInline(admin.TabularInline):
     model = DomainSitemap
-    extra = 1
-    fields = ["idx", "domain_url", "language_sitemap", "languages"]
-    filter_horizontal = ["languages"]
+    extra = 0
+    fields = ["idx", "domain_url", "language_sitemap", "config_split_mode", "languages", "currencies", "countries"]
+    readonly_fields = ["config_split_mode"]
+    filter_horizontal = ["languages", "currencies", "countries"]
+    show_change_link = True
+
+    @admin.display(description="File split mode (from config)")
+    def config_split_mode(self, obj):
+        """Read-only echo of the linked LanguageSitemap.file_split_mode so the setting is visible here.
+        The setting itself is edited on the LanguageSitemap (config) page."""
+        if obj and obj.language_sitemap_id:
+            return obj.language_sitemap.get_file_split_mode_display()
+        return "—"
 
 
 @admin.register(Channel)
@@ -81,11 +91,27 @@ class ChannelAdmin(admin.ModelAdmin):
 
 @admin.register(DomainSitemap)
 class DomainSitemapAdmin(admin.ModelAdmin):
-    list_display = ["idx", "channel", "domain_url", "language_sitemap", "languages_list"]
+    list_display = [
+        "idx",
+        "channel",
+        "domain_url",
+        "language_sitemap",
+        "languages_list",
+        "currencies_list",
+        "countries_list",
+    ]
     search_fields = ["idx", "domain_url"]
     list_filter = ["channel", "language_sitemap"]
-    filter_horizontal = ["languages"]
+    filter_horizontal = ["languages", "currencies", "countries"]
 
     @admin.display(description="Languages")
     def languages_list(self, obj):
         return ", ".join(obj.languages.values_list("iso2", flat=True))
+
+    @admin.display(description="Currencies")
+    def currencies_list(self, obj):
+        return ", ".join(obj.currencies.values_list("iso3", flat=True)) or "all"
+
+    @admin.display(description="Countries")
+    def countries_list(self, obj):
+        return ", ".join(obj.countries.values_list("iso2", flat=True)) or "all"

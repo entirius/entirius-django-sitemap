@@ -5,12 +5,13 @@
 import os
 import xml.etree.ElementTree as ET
 from abc import ABC, abstractmethod
+from collections.abc import Iterable
 
 from process_logger import ProcessLoggerMixin
 from tqdm import tqdm
 
 from django_sitemap import settings
-from django_sitemap.models import DomainSitemap, LanguageSitemap
+from django_sitemap.models import DomainSitemap, FileSplitMode, LanguageSitemap
 
 
 class BaseSitemapGenerator(ProcessLoggerMixin, ABC):
@@ -54,6 +55,28 @@ class BaseSitemapGenerator(ProcessLoggerMixin, ABC):
             return list(domain_languages & shop_languages)
         return list(domain_languages)
 
+    def _get_shop_currencies(self) -> list[str]:
+        """ISO3 currency codes configured on the domain (empty = no currency dimension)."""
+        return list(self.domain_sitemap.currencies.values_list("iso3", flat=True))
+
+    def _get_shop_countries(self) -> list[str]:
+        """ISO2 country codes configured on the domain (empty = no country dimension)."""
+        return list(self.domain_sitemap.countries.values_list("iso2", flat=True))
+
+    def _iter_countries(self) -> Iterable[str | None]:
+        """Countries to iterate. Driven by DomainSitemap.countries (per row), independent of the
+        language/currency axes. ``[None]`` = no countries configured → no country filter/dimension."""
+        return self._get_shop_countries() or [None]
+
+    def _merge_languages(self) -> bool:
+        """Whether all languages share one file (WHOLE_CHANNEL) rather than one file per language."""
+        return self.sitemap_channel.file_split_mode == FileSplitMode.WHOLE_CHANNEL
+
+    def _iter_currencies(self) -> Iterable[str | None]:
+        """Currencies to iterate. Driven by DomainSitemap.currencies (per row), independent of the
+        language split mode. ``[None]`` = no currencies configured → no currency filter/dimension."""
+        return self._get_shop_currencies() or [None]
+
     @staticmethod
     def _get_formatted_lang_url(url: str, language: str):
         """
@@ -67,6 +90,42 @@ class BaseSitemapGenerator(ProcessLoggerMixin, ABC):
         url = url.replace("{{language_iso2.upper()}}", language.upper())
         url = url.replace("{{language_iso2}}", language)
         return url
+
+    @staticmethod
+    def _get_formatted_currency_url(url: str, currency: str | None) -> str:
+        """
+        Replace currency placeholders with the currency ISO3 code (mirrors language).
+        Supports {{currency_iso3}}, {{currency_iso3.lower()}}, {{currency_iso3.upper()}}.
+        ``currency=None`` (no currency dimension) resolves placeholders to an empty string.
+        """
+        code = currency or ""
+        url = url.replace("{{currency_iso3.lower()}}", code.lower())
+        url = url.replace("{{currency_iso3.upper()}}", code.upper())
+        url = url.replace("{{currency_iso3}}", code)
+        return url
+
+    @staticmethod
+    def _currency_file_suffix(currency: str | None) -> str:
+        """Filename suffix so per-currency files don't collide. Empty when no currency (back-compat)."""
+        return f"-{currency.lower()}" if currency else ""
+
+    @staticmethod
+    def _get_formatted_country_url(url: str, country: str | None) -> str:
+        """
+        Replace country placeholders with the country ISO2 code (mirrors language/currency).
+        Supports {{country_iso2}}, {{country_iso2.lower()}}, {{country_iso2.upper()}}.
+        ``country=None`` (no country dimension) resolves placeholders to an empty string.
+        """
+        code = country or ""
+        url = url.replace("{{country_iso2.lower()}}", code.lower())
+        url = url.replace("{{country_iso2.upper()}}", code.upper())
+        url = url.replace("{{country_iso2}}", code)
+        return url
+
+    @staticmethod
+    def _country_file_suffix(country: str | None) -> str:
+        """Filename suffix so per-country files don't collide. Empty when no country (back-compat)."""
+        return f"-{country.lower()}" if country else ""
 
     def _replace_channel_placeholders(self, url: str) -> str:
         """Replace {{channel_short_idx}} placeholder, safe when channel_short_idx is None."""
@@ -108,16 +167,14 @@ class BaseSitemapGenerator(ProcessLoggerMixin, ABC):
 
     def print_progress(self, written: int, total: int, name: str):
         """
-        Wyświetla postęp operacji przy użyciu biblioteki tqdm.
-        Metoda inicjalizuje pasek postępu tylko wtedy, gdy jest wywoływana po raz pierwszy.
+        Display operation progress using the tqdm library.
+        Initializes the progress bar only on the first call.
         """
         if not hasattr(self, "_tqdm_bars"):
             self._tqdm_bars = {}
 
         if name not in self._tqdm_bars:
-            self._tqdm_bars[name] = tqdm(
-                total=total, desc=f"Przetwarzanie {name}", unit="element", leave=True, disable=None
-            )
+            self._tqdm_bars[name] = tqdm(total=total, desc=f"Processing {name}", unit="item", leave=True, disable=None)
             self._tqdm_bars[name].update(written)
         else:
             last_update = getattr(self, f"_last_{name}_update", 0)
@@ -137,8 +194,8 @@ class BaseSitemapGenerator(ProcessLoggerMixin, ABC):
                 self.logger.info(f"Log param {key}: {value}")
 
     def save_merged_files(self):
-        """Zapisuje połączone pliki sitemap (gdy merge_languages_in_sitemap=True)."""
-        if not self.sitemap_channel.merge_languages_in_sitemap:
+        """Save merged sitemap files (when the split mode merges languages)."""
+        if not self._merge_languages():
             return
         self._add_log_params(language="merged")
 
@@ -149,6 +206,8 @@ class BaseSitemapGenerator(ProcessLoggerMixin, ABC):
 
         self.logger.info(f"Saving {len(self.merged_urlsets)} merged sitemap files for domain {self.domain_sitemap.idx}")
         for key, urlset in self.merged_urlsets.items():
+            if len(urlset) == 0:
+                continue
             try:
                 self.save_xml(urlset, key)
                 self.logger.info(f"Successfully saved merged sitemap file: {key}")

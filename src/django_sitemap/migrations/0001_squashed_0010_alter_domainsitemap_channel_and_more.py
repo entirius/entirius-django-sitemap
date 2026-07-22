@@ -103,14 +103,14 @@ class Migration(migrations.Migration):
                     "merge_languages_in_sitemap",
                     models.BooleanField(
                         default=True,
-                        help_text="Jeśli zaznaczone, pliki sitemap dla różnych języków będą łączone w jeden plik dla danego kanału.",
+                        help_text="If set, sitemap files for different languages are merged into one file per channel.",
                     ),
                 ),
                 (
                     "skip_category_without_enabled_products",
                     models.BooleanField(
                         default=True,
-                        help_text="Jeśli zaznaczone, kategorie bez włączonych produktów nie będą generowane w sitemap.",
+                        help_text="If set, categories without enabled products are not generated in the sitemap.",
                     ),
                 ),
                 (
