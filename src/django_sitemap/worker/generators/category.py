@@ -21,14 +21,12 @@ except ImportError:
 
 class CategorySitemapGenerator(BaseSitemapGenerator):
     """
-    Generator sitemap dla kategorii.
-    Generuje pliki sitemap dla wszystkich aktywnych kategorii w skonfigurowanych językach.
+    Sitemap generator for categories.
+    Generates sitemap files for all active categories in the configured languages.
 
-    Zapewnia dwa tryby działania:
-    1. Standardowy - osobny plik sitemap dla każdego języka (merge_languages_in_sitemap=False)
-    2. Połączony - wszystkie języki w jednym pliku sitemap (merge_languages_in_sitemap=True)
-
-    Tryb działania jest określany przez pole merge_languages_in_sitemap w modelu Channel.
+    File split is controlled by LanguageSitemap.file_split_mode: WHOLE_CHANNEL (languages
+    merged) or PER_LANGUAGE (one file per language). The currency axis is independent —
+    driven by DomainSitemap.currencies (filter + separate per-currency files).
     """
 
     def __init__(self, *args, **kwargs):
@@ -38,7 +36,7 @@ class CategorySitemapGenerator(BaseSitemapGenerator):
 
     def _add_log_params(self, category_idx=None, language=None):
         """
-        Dodaje parametry do loggera.
+        Add parameters to the logger.
         """
         if category_idx:
             self.logger.add_log_param("category_idx", category_idx)
@@ -93,7 +91,9 @@ class CategorySitemapGenerator(BaseSitemapGenerator):
 
         return f"{domain_with_scheme}/{path}/"
 
-    def add_category_to_urlset(self, urlset: ET.Element, category: ProductCategory, language: str):
+    def add_category_to_urlset(
+        self, urlset: ET.Element, category: ProductCategory, language: str, currency: str | None = None
+    ):
         try:
             self._add_log_params(category_idx=category.idx, language=language)
             if not (category_url_key := category.url_key_t9n.get(language, None)):
@@ -108,6 +108,7 @@ class CategorySitemapGenerator(BaseSitemapGenerator):
 
             formatted_url = self._get_category_url()
             formatted_url = self._get_formatted_lang_url(formatted_url, language)
+            formatted_url = self._get_formatted_currency_url(formatted_url, currency)
             category_url = f"{formatted_url}{category_url_key}"
 
             loc.text = category_url
@@ -120,9 +121,12 @@ class CategorySitemapGenerator(BaseSitemapGenerator):
             self.logger.delete_log_param("category_idx")
             self.logger.delete_log_param("language")
 
-    def process_categories_for_language(self, categories: list[ProductCategory], language: str):
+    def process_categories_for_language(
+        self, categories: list[ProductCategory], language: str, currency: str | None = None
+    ):
         total_categories = len(categories)
         file_counter = 1
+        suffix = self._currency_file_suffix(currency)
         current_categories = []
 
         for category in tqdm(
@@ -131,35 +135,41 @@ class CategorySitemapGenerator(BaseSitemapGenerator):
             current_categories.append(category)
 
             if len(current_categories) >= settings.LIMIT:
-                if self.sitemap_channel.merge_languages_in_sitemap:
-                    merged_key = f"categories-{file_counter}"
+                if self._merge_languages():
+                    merged_key = f"categories-{file_counter}{suffix}"
                     if merged_key not in self.merged_urlsets:
                         self.merged_urlsets[merged_key] = self.create_base_urlset()
 
                     for category in current_categories:
-                        self.add_category_to_urlset(self.merged_urlsets[merged_key], category, language)
+                        self.add_category_to_urlset(self.merged_urlsets[merged_key], category, language, currency)
                 else:
-                    self.dump_categories_to_file(current_categories, f"categories-{file_counter}", language)
+                    self.dump_categories_to_file(
+                        current_categories, f"categories-{file_counter}{suffix}", language, currency
+                    )
 
                 current_categories = []
                 file_counter += 1
 
         if current_categories:
-            if self.sitemap_channel.merge_languages_in_sitemap:
-                merged_key = f"categories-{file_counter}"
+            if self._merge_languages():
+                merged_key = f"categories-{file_counter}{suffix}"
                 if merged_key not in self.merged_urlsets:
                     self.merged_urlsets[merged_key] = self.create_base_urlset()
 
                 for category in current_categories:
-                    self.add_category_to_urlset(self.merged_urlsets[merged_key], category, language)
+                    self.add_category_to_urlset(self.merged_urlsets[merged_key], category, language, currency)
             else:
-                self.dump_categories_to_file(current_categories, f"categories-{file_counter}", language)
+                self.dump_categories_to_file(
+                    current_categories, f"categories-{file_counter}{suffix}", language, currency
+                )
 
-    def dump_categories_to_file(self, categories: list[ProductCategory], filepath: str, language: str):
+    def dump_categories_to_file(
+        self, categories: list[ProductCategory], filepath: str, language: str, currency: str | None = None
+    ):
         urlset = self.create_base_urlset()
 
         for category in categories:
-            self.add_category_to_urlset(urlset, category, language)
+            self.add_category_to_urlset(urlset, category, language, currency)
 
         if not urlset:
             self.logger.warning(f"No categories found for {filepath}-{language}. Skipping file generation.")
@@ -176,7 +186,8 @@ class CategorySitemapGenerator(BaseSitemapGenerator):
         categories = self.get_active_categories(self.channel_idx)
         for language in self._get_shop_languages():
             self._add_log_params(language=language)
-            self.process_categories_for_language(categories, language)
+            for currency in self._iter_currencies():
+                self.process_categories_for_language(categories, language, currency)
             self.logger.delete_log_param("language")
 
         self.save_merged_files()

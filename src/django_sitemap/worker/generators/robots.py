@@ -30,11 +30,14 @@ class RobotsTxtGenerator(BaseSitemapGenerator):
 
     def add_sitemaps_to_robots(self):
         base_url = self._get_base_url()
+        ignore = ["robots.txt", ".sitemap-processing"]
+        filenames = [name for name in os.listdir(self.channels_sitemaps_dir) if name not in ignore]
+        if not filenames:
+            return
         with open(self.robots_dir, "a") as f:
-            ignore = ["robots.txt", ".sitemap-processing"]
-            for filename in os.listdir(self.channels_sitemaps_dir):
-                if filename not in ignore:
-                    f.write(f"Sitemaps: {base_url}/sitemap/{filename}\n")
+            f.write("\n")
+            for filename in filenames:
+                f.write(f"Sitemap: {base_url}/sitemap/{filename}\n")
 
     def generate(self):
         self.ensure_sitemap_directory()
