@@ -96,6 +96,7 @@ SITEMAP_URL_HOST                         = "https://shop.example.com"   # traili
 SITEMAP_FORMAT_XML                       = True
 SITEMAP_LIMIT                            = 2000                          # max URLs per sitemap file
 SITEMAP_ROOT_DIR                         = MEDIA_ROOT                    # output root
+SITEMAP_ROBOTS_TEMPLATE_PATH             = "/etc/sitemap/robots.txt"   # default: template shipped with the app
 LIST_OF_CATEGORY_IDXES_WHICH_ARE_EXCLUDED = []
 ```
 
