@@ -41,7 +41,14 @@ SITEMAP_URL_HOST = "https://shop.example.com"
 SITEMAP_FORMAT_XML = True
 SITEMAP_LIMIT = 2000            # max URLs per sitemap file
 SITEMAP_ROOT_DIR = MEDIA_ROOT   # output root
+
+# Optional: custom robots.txt template, defaults to the one shipped with the app
+SITEMAP_ROBOTS_TEMPLATE_PATH = "/etc/sitemap/robots.txt"
 ```
+
+The robots.txt template holds directives only (`User-agent`, `Allow`, `Disallow`) — `Sitemap:`
+lines are appended during generation. A non-empty `LanguageSitemap.robots_txt` takes precedence
+over the template file.
 
 ## Development
 

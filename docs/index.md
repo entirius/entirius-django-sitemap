@@ -84,6 +84,9 @@ SITEMAP_FORMAT_XML = True                       # pretty-print XML output
 SITEMAP_LIMIT = 2000                            # max URLs per sitemap file
 SITEMAP_ROOT_DIR = MEDIA_ROOT                   # output root
 LIST_OF_CATEGORY_IDXES_WHICH_ARE_EXCLUDED = []
+
+# optional: custom robots.txt template, defaults to the one shipped with the app
+SITEMAP_ROBOTS_TEMPLATE_PATH = "/etc/sitemap/robots.txt"
 ```
 
 Output goes to `{SITEMAP_ROOT_DIR}/sitemap/{domain_idx}/`. A staging directory `{SITEMAP_ROOT_DIR}/sitemap-processing/{domain_idx}/` holds files mid-generation and is renamed atomically on success.
@@ -94,5 +97,5 @@ Output goes to `{SITEMAP_ROOT_DIR}/sitemap/{domain_idx}/`. A staging directory `
 - URL placeholders are string-substituted, not evaluated. Unknown placeholders pass through unchanged and produce broken URLs.
 - `exclude_product_types` uses magic integer codes from PIM's `ProductType` enum (0=Base, 1=Simple, 2=Configurable, 3=Bundle, 4=Custom). Keep in sync when PIM adds new types.
 - `merge_languages_in_sitemap=True` produces one file per channel with all languages inside. `False` produces one file per (channel, language) pair — useful when languages live on different subdomains.
-- `robots_txt` field on `LanguageSitemap` overrides the default template, but sitemap `Sitemaps: …` entries are still appended automatically by `RobotsTxtGenerator`.
+- `robots_txt` field on `LanguageSitemap` overrides the default template, but sitemap `Sitemap: …` entries are still appended automatically by `RobotsTxtGenerator`. The template itself holds directives only (`User-agent`, `Allow`, `Disallow`).
 - The legacy `tests.py` placeholder is empty. Real tests live under `tests/` (since 3.2.0).
