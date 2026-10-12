@@ -1,11 +1,9 @@
 # AGENTS.md
 
-Multilingual XML sitemap and robots.txt generator for Volkanos PWAs — distribution
-`entirius-django-sitemap`, Django app `django_sitemap`. Produces separate sitemaps per content type (products, categories, custom products, ContentDB pages, FAQ items), a sitemap index, and a `robots.txt` per channel-domain. Supports language-scoped URL prefixes, alternate language links (hreflang), and optional language merging into a single file.
-
-**Tech:** Python >=3.11, Django >=4.0, tqdm, pytz, entirius-py-process-logger,
-entirius-django-regional. Soft integrations (extras): entirius-django-pim, entirius-django-contentdb,
-entirius-django-faq.
+`entirius-django-sitemap` (Django app `django_sitemap`) — multilingual XML sitemap and robots.txt generator of
+Entirius. Produces separate sitemaps per content type (products, categories, custom products, ContentDB pages, FAQ
+items), a sitemap index, and a `robots.txt` per channel-domain. Supports language-scoped URL prefixes and
+optional language merging into a single file.
 
 ## Commands
 
@@ -16,6 +14,8 @@ entirius-django-faq.
 | `make fix` | auto-fix lint + format |
 | `make test` | test suite (pytest + pytest-django) |
 
+Tests need PostgreSQL: set `DATABASE_URL` (the default in `tests/settings.py` points at a local postgres).
+
 ## Conventions
 
 - English only: code, docs, commits, branches, PRs.
@@ -25,6 +25,7 @@ entirius-django-faq.
 - Never rename the package / Django app_label / DB table prefix `django_sitemap` — it is a schema contract.
 - Migrations are part of the public contract — never edit an already released migration.
 - Default: do not commit — git is the user's call.
+- No AI attribution in commits or PR descriptions.
 
 ## Architecture
 
@@ -52,44 +53,25 @@ src/django_sitemap/
 │       └── sitemap_coordinator.py   # SitemapCoordinator — orchestrates all generators + index
 │
 ├── management/commands/
-│   └── generate_sitemap.py          # python manage.py generate_sitemap {shop_idx} [--languages en de fr]
+│   └── generate_sitemap.py          # python manage.py generate_sitemap [--domain_idx <idx>] [--sitemap] [--robots]
 │
 ├── templates/admin/                 # sitemap.xml, robots.txt Django templates
 └── migrations/
 ```
 
-Generation flow: `generate_sitemap` management command iterates `DomainSitemap` rows for a given `shop_idx`, instantiates a `SitemapCoordinator` per domain, which runs each generator (product → category → custom-product → ContentDB → robots → index).
+Generation flow: `generate_sitemap` management command iterates `DomainSitemap` rows (one when `--domain_idx` is given, else all), instantiates a `SitemapCoordinator` per domain, which runs each generator (product, custom products included → category → ContentDB → FAQ → index); `robots.txt` is written separately by `generate_robots`.
 
-## Data Model
+Soft dependencies are detected at import in `settings.py` / generators: `django_contentdb` (or legacy `contentdb`),
+`django_faq`, `django_pim`. A missing one skips its generator; details in `docs/index.md` § Soft Dependencies.
 
-| Entity | Key Fields | Relationships |
-|---|---|---|
-| Channel | idx (unique) | Referenced by DomainSitemap |
-| DomainSitemap | idx (unique), domain_url | FK → Channel, FK → LanguageSitemap, M2M → `django_regional.Language` |
-| LanguageSitemap | idx, channel_short_idx (both unique), is_active, product_url, category_url, custom_product_url, faq_url, contentdb_content_types_to_process (JSON), contentdb_access_rights (JSON), merge_languages_in_sitemap, skip_category_without_enabled_products, exclude_product_types (JSON), robots_txt (custom override) | Back-reference from DomainSitemap |
+| Topic | Where |
+|---|---|
+| Overview, soft dependencies, URL prefix placeholders | `docs/index.md` |
+| Data model | `docs/data-model.md` |
+| Management command | `docs/commands.md` |
+| Testing | `docs/testing.md` |
 
-URL prefix templates support placeholders:
-- `{{language_iso2}}` — language ISO2 code (e.g. `en`, `pl`)
-- `{{channel_short_idx}}` — short idx of the channel
-- Modifiers: `{{language_iso2.lower()}}`, `{{language_iso2.upper()}}`
-
-Example `contentdb_content_types_to_process`:
-```json
-{"blog-post": "{{language_iso2.lower()}}/porady", "static-page": "{{channel_short_idx}}/static"}
-```
-
-`exclude_product_types` uses integer codes: `0=ProductBase, 1=ProductSimple, 2=ProductConfigurable, 3=ProductBundle, 4=ProductCustom`.
-
-`LanguageSitemap.save()` strips leading/trailing slashes from all `*_url` fields.
-
-## Commands
-
-```bash
-python manage.py generate_sitemap {shop_idx}
-python manage.py generate_sitemap {shop_idx} --languages en de fr
-```
-
-## Configuration
+## Settings
 
 ```python
 SITEMAP_URL_HOST                         = "https://shop.example.com"   # trailing slash stripped
@@ -103,36 +85,16 @@ Output paths:
 - `{SITEMAP_ROOT_DIR}/sitemap/` — final artefacts
 - `{SITEMAP_ROOT_DIR}/sitemap-processing/` — temporary generation dir
 
-## Dependencies
-
-**Runtime:** Django >=4.0, tqdm, pytz, entirius-py-process-logger,
-entirius-django-regional (`Language` — M2M on `DomainSitemap`).
-
-**Soft dependencies (extras; detected at import in `settings.py` / generators):**
-- `django_contentdb` (or legacy `contentdb`) — when neither is present, ContentDB sitemap generation is skipped and `CONTENTDB_PACKAGE = None`.
-- `django_faq` — when not installed, FAQ sitemap generation is skipped and `FAQ_PACKAGE = None`. Also skipped at runtime when `LanguageSitemap.faq_url` is empty.
-- `django_pim` — when not installed, product and category generators stop with a log message.
-
-## Testing
-
-Tests run on postgres via `DATABASE_URL` (CI provides a postgres service; locally point it at any
-postgres 15+).
-
-```bash
-make install
-make test
-```
-
-Test suite covers `LanguageSitemap.faq_url` normalization, `FaqPage.get_active_items` channel scoping (8 branches), and `FaqSitemapGenerator` end-to-end (guard paths, URL formatting, merged/per-language XML output).
+The robots.txt template path is `SITEMAP_ROBOTS_TEMPLATE_PATH` (default: the bundled `templates/admin/robots.txt`).
 
 ## Gotchas
 
 - `<lastmod>` source field differs per generator because upstream models do not share a base: products and categories use `db_modified` (PIM legacy), ContentDB pages use `Content.updated_at`, FAQ items use `modified_at` (django-utils `BaseModel`). When adding a new generator, identify the actual `auto_now=True` field on the source model — do not assume `modified_at`. When adding regression tests for product/category/contentdb generators (currently only FAQ is covered), the first assertion must validate `<lastmod>` equals the source entity's timestamp `isoformat()`. Also: any queryset that uses `.only(...)` MUST include the timestamp field, otherwise iterating triggers N+1 deferred-field reads (see `models/faq.py:FaqPage.get_active_items`).
 - ContentDB import fallback tries `django_contentdb` first, then legacy `contentdb`. The active package name is exposed via `settings.CONTENTDB_PACKAGE` for runtime checks.
 - URL prefix placeholders are string-substituted, not evaluated — unknown placeholders pass through unchanged and produce broken URLs. Always lint the rendered output.
-- `SITEMAP_LIMIT` default is 2000 per file (README shows 10000 as an example). Google's limit is 50000; tune per project.
+- `SITEMAP_LIMIT` default is 2000 per file. Google's limit is 50000; tune per project.
 - `LanguageSitemap.channel_short_idx` is unique globally, not per-channel. Two channels cannot share the same short idx.
-- `exclude_product_types` uses magic integer codes. The mapping lives in PIM's `ProductType` enum — keep in sync when PIM adds new product types.
-- `merge_languages_in_sitemap=True` (default) produces one sitemap file per channel with hreflang alternates. `False` produces one file per (channel, language) pair — useful when languages sit on different subdomains.
+- `exclude_product_types` uses magic integer codes. The mapping lives in PIM's `ProductClassEnum` — keep in sync when PIM adds new product types.
+- `file_split_mode=WHOLE_CHANNEL` (default) produces one sitemap file per channel with all languages inside. `PER_LANGUAGE` produces one file per (channel, language) pair — useful when languages sit on different subdomains.
 - No API endpoints — this module is worker-only, triggered by management command or programmatic calls into `worker.sitemap`.
 - `robots_txt` field on `LanguageSitemap` overrides the default template but sitemap entries are still appended automatically by `RobotsTxtGenerator`.
