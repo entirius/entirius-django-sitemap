@@ -1,7 +1,21 @@
 [project]
 name = "entirius-django-sitemap"
 version = "4.0.1"
-description = "Django app to create multilingual sitemaps for PWA with ContentDB and FAQ support"
+description = "Multilingual XML sitemap and robots.txt generator for Entirius storefronts: products, categories, content, FAQ"
+keywords = ["django", "ecommerce", "entirius", "sitemap", "robots-txt", "seo", "multilingual"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Framework :: Django",
+    "Framework :: Django :: 5.2",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Internet :: WWW/HTTP :: Site Management",
+]
 authors = [{ name = "Entirius" }]
 readme = "README.md"
 requires-python = ">=3.11"
@@ -28,7 +42,11 @@ contentdb = ["entirius-django-contentdb>=5.0.0"]
 faq       = ["entirius-django-faq>=2.0.0"]
 
 [project.urls]
+Homepage = "https://docs.entirius.com/"
+Documentation = "https://github.com/entirius/entirius-django-sitemap/tree/develop/docs"
 Repository = "https://github.com/entirius/entirius-django-sitemap"
+Changelog = "https://github.com/entirius/entirius-django-sitemap/blob/develop/CHANGELOG.md"
+Issues = "https://github.com/entirius/entirius-django-sitemap/issues"
 
 [build-system]
 requires = ["hatchling"]
