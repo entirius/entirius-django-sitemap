@@ -1,6 +1,6 @@
 [project]
 name = "entirius-django-sitemap"
-version = "4.0.1"
+version = "4.0.2rc1"
 description = "Multilingual XML sitemap and robots.txt generator for Entirius storefronts: products, categories, content, FAQ"
 keywords = ["django", "ecommerce", "entirius", "sitemap", "robots-txt", "seo", "multilingual"]
 classifiers = [

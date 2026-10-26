@@ -1,5 +1,7 @@
 # Changelog
 
+## 4.0.2rc1 — 2026-10-26
+
 ## 4.0.1 — 2026-07-22
 
 - File split mode and per-domain countries/currencies.
