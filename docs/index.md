@@ -96,6 +96,6 @@ Output goes to `{SITEMAP_ROOT_DIR}/sitemap/{domain_idx}/`. A staging directory `
 - `LanguageSitemap.channel_short_idx` is unique globally, not per-channel. Two channels cannot share the same short idx.
 - URL placeholders are string-substituted, not evaluated. Unknown placeholders pass through unchanged and produce broken URLs.
 - `exclude_product_types` uses magic integer codes from PIM's `ProductType` enum (0=Base, 1=Simple, 2=Configurable, 3=Bundle, 4=Custom). Keep in sync when PIM adds new types.
-- `merge_languages_in_sitemap=True` produces one file per channel with all languages inside. `False` produces one file per (channel, language) pair — useful when languages live on different subdomains.
+- `file_split_mode=WHOLE_CHANNEL` (default) produces one file per channel with all languages inside. `PER_LANGUAGE` produces one file per (channel, language) pair — useful when languages live on different subdomains.
 - `robots_txt` field on `LanguageSitemap` overrides the default template, but sitemap `Sitemap: …` entries are still appended automatically by `RobotsTxtGenerator`. The template itself holds directives only (`User-agent`, `Allow`, `Disallow`).
 - The legacy `tests.py` placeholder is empty. Real tests live under `tests/` (since 3.2.0).

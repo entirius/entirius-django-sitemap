@@ -87,6 +87,8 @@ Output paths:
 - `{SITEMAP_ROOT_DIR}/sitemap-processing/` — temporary generation dir
 
 The robots.txt template path is `SITEMAP_ROBOTS_TEMPLATE_PATH` (default: the bundled `templates/admin/robots.txt`).
+The file is copied verbatim (not rendered as a Django template) and holds directives only (`User-agent`, `Allow`,
+`Disallow`); `Sitemap:` lines are appended during generation.
 
 ## Gotchas
 
