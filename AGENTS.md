@@ -78,6 +78,7 @@ SITEMAP_URL_HOST                         = "https://shop.example.com"   # traili
 SITEMAP_FORMAT_XML                       = True
 SITEMAP_LIMIT                            = 2000                          # max URLs per sitemap file
 SITEMAP_ROOT_DIR                         = MEDIA_ROOT                    # output root
+SITEMAP_ROBOTS_TEMPLATE_PATH             = "/etc/sitemap/robots.txt"   # default: template shipped with the app
 LIST_OF_CATEGORY_IDXES_WHICH_ARE_EXCLUDED = []
 ```
 
@@ -86,6 +87,8 @@ Output paths:
 - `{SITEMAP_ROOT_DIR}/sitemap-processing/` — temporary generation dir
 
 The robots.txt template path is `SITEMAP_ROBOTS_TEMPLATE_PATH` (default: the bundled `templates/admin/robots.txt`).
+The file is copied verbatim (not rendered as a Django template) and holds directives only (`User-agent`, `Allow`,
+`Disallow`); `Sitemap:` lines are appended during generation.
 
 ## Gotchas
 
