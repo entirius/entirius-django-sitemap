@@ -12,6 +12,7 @@ import pytest
 from django_faq.models import FaqItem, FaqItemT9N
 
 from django_sitemap import settings as sitemap_settings
+from django_sitemap.models import FileSplitMode
 from django_sitemap.worker.generators.faq import FaqSitemapGenerator
 
 
@@ -92,7 +93,7 @@ def test_get_faq_base_url_with_channel_short_idx(generator, language_sitemap):
 def test_generate_full_flow_produces_merged_xml(generator, faq_channel, language_sitemap, tmp_path, monkeypatch):
     monkeypatch.setattr(sitemap_settings, "SITEMAP_PATH", str(tmp_path / "sitemap") + "/")
     monkeypatch.setattr(sitemap_settings, "TEMPORARY_PATH", str(tmp_path / "tmp") + "/")
-    language_sitemap.merge_languages_in_sitemap = True
+    language_sitemap.file_split_mode = FileSplitMode.WHOLE_CHANNEL
     language_sitemap.save()
     generator.sitemap_channel.refresh_from_db()
 
@@ -127,7 +128,7 @@ def test_generate_writes_per_language_files_when_merge_disabled(
 ):
     monkeypatch.setattr(sitemap_settings, "SITEMAP_PATH", str(tmp_path / "sitemap") + "/")
     monkeypatch.setattr(sitemap_settings, "TEMPORARY_PATH", str(tmp_path / "tmp") + "/")
-    language_sitemap.merge_languages_in_sitemap = False
+    language_sitemap.file_split_mode = FileSplitMode.PER_LANGUAGE
     language_sitemap.save()
     generator.sitemap_channel.refresh_from_db()
 
@@ -156,7 +157,7 @@ def test_generate_skips_languages_when_no_active_items(generator, faq_channel, t
 def test_lastmod_uses_item_modified_at(generator, faq_channel, language_sitemap, tmp_path, monkeypatch):
     monkeypatch.setattr(sitemap_settings, "SITEMAP_PATH", str(tmp_path / "sitemap") + "/")
     monkeypatch.setattr(sitemap_settings, "TEMPORARY_PATH", str(tmp_path / "tmp") + "/")
-    language_sitemap.merge_languages_in_sitemap = False
+    language_sitemap.file_split_mode = FileSplitMode.PER_LANGUAGE
     language_sitemap.save()
     generator.sitemap_channel.refresh_from_db()
 
@@ -196,7 +197,7 @@ def test_per_language_url_key_override_wins(
     """Non-empty FaqItemT9N.url_key replaces base url_key in that language's URL."""
     monkeypatch.setattr(sitemap_settings, "SITEMAP_PATH", str(tmp_path / "sitemap") + "/")
     monkeypatch.setattr(sitemap_settings, "TEMPORARY_PATH", str(tmp_path / "tmp") + "/")
-    language_sitemap.merge_languages_in_sitemap = False
+    language_sitemap.file_split_mode = FileSplitMode.PER_LANGUAGE
     language_sitemap.save()
     generator.sitemap_channel.refresh_from_db()
 
@@ -224,7 +225,7 @@ def test_empty_t9n_url_key_falls_back_to_base(generator, faq_channel, language_s
     """FaqItemT9N row with url_key='' MUST NOT shadow the base url_key."""
     monkeypatch.setattr(sitemap_settings, "SITEMAP_PATH", str(tmp_path / "sitemap") + "/")
     monkeypatch.setattr(sitemap_settings, "TEMPORARY_PATH", str(tmp_path / "tmp") + "/")
-    language_sitemap.merge_languages_in_sitemap = False
+    language_sitemap.file_split_mode = FileSplitMode.PER_LANGUAGE
     language_sitemap.save()
     generator.sitemap_channel.refresh_from_db()
 
@@ -242,7 +243,7 @@ def test_no_t9n_row_uses_base_url_key(generator, faq_channel, language_sitemap, 
     """Item without any T9N rows uses base url_key for every language."""
     monkeypatch.setattr(sitemap_settings, "SITEMAP_PATH", str(tmp_path / "sitemap") + "/")
     monkeypatch.setattr(sitemap_settings, "TEMPORARY_PATH", str(tmp_path / "tmp") + "/")
-    language_sitemap.merge_languages_in_sitemap = False
+    language_sitemap.file_split_mode = FileSplitMode.PER_LANGUAGE
     language_sitemap.save()
     generator.sitemap_channel.refresh_from_db()
 
@@ -262,7 +263,7 @@ def test_per_language_url_key_in_merged_output(
     """Per-language url_keys must be honoured in merged-language sitemap files too."""
     monkeypatch.setattr(sitemap_settings, "SITEMAP_PATH", str(tmp_path / "sitemap") + "/")
     monkeypatch.setattr(sitemap_settings, "TEMPORARY_PATH", str(tmp_path / "tmp") + "/")
-    language_sitemap.merge_languages_in_sitemap = True
+    language_sitemap.file_split_mode = FileSplitMode.WHOLE_CHANNEL
     language_sitemap.save()
     generator.sitemap_channel.refresh_from_db()
 
