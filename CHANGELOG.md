@@ -2,6 +2,13 @@
 
 ## 4.0.2rc1 — 2026-10-26
 
+- Docs: `SITEMAP_ROBOTS_TEMPLATE_PATH` (default: the bundled `templates/admin/robots.txt`) is documented. The file
+  is copied verbatim, not rendered, and holds directives only; `Sitemap:` lines are appended during generation, and a
+  non-empty `LanguageSitemap.robots_txt` takes precedence. `docs/index.md` names `file_split_mode` in place of
+  `merge_languages_in_sitemap` (renamed in 4.0.1). Behaviour unchanged.
+- Dev lock refreshed (open Dependabot alerts): Django 5.2.18 / 6.0.9, djangorestframework 3.18.3, PyJWT 2.15.1,
+  sqlparse 0.6.0, urllib3 2.8.0. The package's dependency ranges are unchanged.
+
 ## 4.0.1 — 2026-07-22
 
 - File split mode and per-domain countries/currencies.
