@@ -599,7 +599,7 @@ wheels = [
 
 [[package]]
 name = "entirius-django-sitemap"
-version = "4.0.1"
+version = "4.0.2"
 source = { editable = "." }
 dependencies = [
     { name = "django", version = "5.2.18", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
