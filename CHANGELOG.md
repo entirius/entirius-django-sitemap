@@ -1,6 +1,6 @@
 # Changelog
 
-## 4.0.2rc1 — 2026-10-26
+## 4.0.2 — 2026-10-27
 
 - Docs: `SITEMAP_ROBOTS_TEMPLATE_PATH` (default: the bundled `templates/admin/robots.txt`) is documented. The file
   is copied verbatim, not rendered, and holds directives only; `Sitemap:` lines are appended during generation, and a
